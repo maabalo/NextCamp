@@ -78,6 +78,31 @@ const ICON_LABELS = {
 };
 
 // ═══════════════════════════════════════════════
+// Icon colour normaliser
+// Some source SVGs hardcode black via fill="#000",
+// inline style, or an embedded <style> block. Those
+// beat our CSS, so we strip them and hand control
+// back to `color` via currentColor.
+// fill="none" is preserved — those icons are drawn
+// with strokes and would turn into blobs otherwise.
+// ═══════════════════════════════════════════════
+function normaliseIcon(svg) {
+  return svg
+    // embedded <style> blocks leak globally once injected
+    .replace(/<style[\s\S]*?<\/style>/gi, '')
+    .replace(/\s(?:class)="st\d+"/gi, '')
+    // inline style attributes (only ever used for fill here)
+    .replace(/\sstyle="[^"]*"/gi, '')
+    // explicit colours -> currentColor, but leave "none" alone
+    .replace(/\sfill="(?!none)[^"]*"/gi, ' fill="currentColor"')
+    .replace(/\sstroke="(?!none)[^"]*"/gi, ' stroke="currentColor"');
+}
+
+Object.keys(PIXEL_ICONS).forEach(k => {
+  PIXEL_ICONS[k] = normaliseIcon(PIXEL_ICONS[k]);
+});
+
+// ═══════════════════════════════════════════════
 // Legend
 // ═══════════════════════════════════════════════
 function renderLegend() {
