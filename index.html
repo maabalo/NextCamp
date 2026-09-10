@@ -139,7 +139,10 @@
   <main class="stage">
     <div class="stage-head">
       <p class="results-count" id="resultsCount"></p>
-      <button id="sortBtn" class="btn btn-dark" data-sort="asc">SORT: A-Z</button>
+      <div class="stage-tools">
+        <button id="favFilterBtn" class="btn btn-dark">☆ SAVED (0)</button>
+        <button id="sortBtn" class="btn btn-dark" data-sort="asc">SORT: A-Z</button>
+      </div>
     </div>
 
     <div class="card-grid" id="cardGrid"></div>
@@ -193,11 +196,12 @@
 
       <p id="modalDesc" class="modal-description">Description goes here...</p>
 
-      <div id="modalVisitContainer" class="modal-visit-container" style="display:none;">
+      <div id="modalVisitContainer" class="modal-visit-container">
         <p class="amenities-heading">GO VISIT</p>
         <div class="modal-links-row">
           <a id="modalCampUrlLink" class="modal-map-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">WEBSITE ↗</a>
           <a id="modalMapLink" class="modal-map-link" href="#" target="_blank" rel="noopener noreferrer" style="display:none;">MAP ↗</a>
+          <button type="button" id="shareBtn" class="modal-map-link share-btn">COPY LINK</button>
         </div>
       </div>
 
