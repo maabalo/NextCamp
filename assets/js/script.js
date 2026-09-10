@@ -93,6 +93,43 @@ function renderLegend() {
 }
 
 // ═══════════════════════════════════════════════
+// Favourites  (saved locally, per browser)
+// ═══════════════════════════════════════════════
+const FAV_KEY = 'nextcamp_favourites';
+let favourites = new Set();
+let showFavsOnly = false;
+
+try {
+  favourites = new Set(JSON.parse(localStorage.getItem(FAV_KEY) || '[]'));
+} catch {
+  favourites = new Set();
+}
+
+function saveFavourites() {
+  try {
+    localStorage.setItem(FAV_KEY, JSON.stringify([...favourites]));
+  } catch {
+    /* storage full or blocked — favourites just won't persist */
+  }
+}
+
+function toggleFavourite(id) {
+  favourites.has(id) ? favourites.delete(id) : favourites.add(id);
+  saveFavourites();
+  updateFavButton();
+}
+
+function updateFavButton() {
+  const btn = document.getElementById('favFilterBtn');
+  if (!btn) return;
+  btn.textContent = showFavsOnly
+    ? `★ SAVED (${favourites.size})`
+    : `☆ SAVED (${favourites.size})`;
+  btn.classList.toggle('btn-leaf', showFavsOnly);
+  btn.classList.toggle('btn-dark', !showFavsOnly);
+}
+
+// ═══════════════════════════════════════════════
 // Inventory grid icons  (suggest / edit modal)
 // Reuses PIXEL_ICONS so slots match the legend
 // ═══════════════════════════════════════════════
@@ -340,6 +377,12 @@ if (adminAddNewBtn) {
 onSnapshot(campsCollection, (snapshot) => {
   camps = snapshot.docs.map(d => ({ id: String(d.id), ...d.data() }));
   renderCards();
+
+  // run the deep link once, after the first load
+  if (!deepLinkDone) {
+    deepLinkDone = true;
+    openFromHash();
+  }
 }, (error) => {
   console.error("Firestore error:", error);
   alert("Error connecting to database. Check console for details.");
@@ -382,10 +425,10 @@ function renderCards() {
     if (currentUser) {
       if (isPending) {
         adminBarHtml = `
-          <div class="pending-banner" style="background:#EB7D00;color:#2E2910;font-size:0.5rem;padding:0.3rem;text-align:center;">PENDING SUGGESTION</div>
-          <div class="admin-approval-actions" style="display:flex;gap:0.5rem;padding:0.5rem;background:rgba(0,0,0,0.3);">
-            <button class="pixel-btn approve-btn" data-id="${camp.id}" style="background:#2C5745;color:#EBE3A7;flex:1;font-size:0.5rem;">APPROVE</button>
-            <button class="pixel-btn decline-btn" data-id="${camp.id}" style="background:#A94442;color:#FFF;flex:1;font-size:0.5rem;">DECLINE</button>
+          <div class="pending-banner">PENDING SUGGESTION</div>
+          <div class="admin-approval-actions">
+            <button class="btn btn-leaf approve-btn" data-id="${camp.id}">APPROVE</button>
+            <button class="btn btn-blood decline-btn" data-id="${camp.id}">DECLINE</button>
           </div>`;
       }
       adminBarHtml += `
@@ -397,11 +440,16 @@ function renderCards() {
         </div>`;
     }
 
+    const isFav = favourites.has(camp.id);
+
     const card = document.createElement('article');
     card.className = 'camp-card';
     card.setAttribute('data-id', camp.id);
     card.innerHTML = `
       ${adminBarHtml}
+      <button class="fav-btn${isFav ? ' on' : ''}" data-fav="${camp.id}"
+              title="${isFav ? 'Remove from saved' : 'Save for later'}"
+              aria-label="Save">${isFav ? '★' : '☆'}</button>
       <div class="card-image-wrapper">${imageHtml}</div>
       <div class="card-content">
         <h2 class="camp-title">${camp.name || ''}</h2>
@@ -458,8 +506,24 @@ function renderCards() {
       }
     }
 
+    const favBtn = card.querySelector('.fav-btn');
+    if (favBtn) {
+      favBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFavourite(camp.id);
+        const nowFav = favourites.has(camp.id);
+        favBtn.classList.toggle('on', nowFav);
+        favBtn.textContent = nowFav ? '★' : '☆';
+        favBtn.title = nowFav ? 'Remove from saved' : 'Save for later';
+        // if the saved-only filter is active, re-run so it drops out live
+        if (showFavsOnly) filterCards();
+      });
+    }
+
     card.addEventListener('click', (e) => {
-      if (!e.target.closest('.card-menu-container') && !e.target.closest('.admin-approval-actions')) {
+      if (!e.target.closest('.card-menu-container') &&
+          !e.target.closest('.admin-approval-actions') &&
+          !e.target.closest('.fav-btn')) {
         openDetailModal(camp);
       }
     });
@@ -515,7 +579,8 @@ function openDetailModal(camp) {
     if (camp.mapUrl?.trim()) { mapLink.href = camp.mapUrl; mapLink.style.display = 'inline-flex'; hasLinks = true; }
     else mapLink.style.display = 'none';
   }
-  if (visitContainer) visitContainer.style.display = hasLinks ? 'block' : 'none';
+  // always visible — the share button lives here too
+  if (visitContainer) visitContainer.style.display = 'block';
 
   const grid = document.getElementById('amenitiesGrid');
   if (grid) {
@@ -527,12 +592,79 @@ function openDetailModal(camp) {
 
   modalOverlay.classList.add('open');
   lockScroll();
+
+  // deep-link: put this campsite in the URL so it can be shared
+  if (history.replaceState) {
+    history.replaceState(null, '', '#' + encodeURIComponent(camp.id));
+  }
+
+  const shareBtn = document.getElementById('shareBtn');
+  if (shareBtn) {
+    shareBtn.textContent = 'COPY LINK';
+    shareBtn.onclick = async () => {
+      const url = location.origin + location.pathname + '#' + encodeURIComponent(camp.id);
+      try {
+        if (navigator.share) {
+          await navigator.share({ title: camp.name || 'NextCamp', url });
+        } else {
+          await navigator.clipboard.writeText(url);
+          shareBtn.textContent = 'COPIED ✓';
+          setTimeout(() => { shareBtn.textContent = 'COPY LINK'; }, 1600);
+        }
+      } catch {
+        // user dismissed the share sheet, or clipboard was blocked
+      }
+    };
+  }
+}
+
+function closeDetailModal() {
+  if (!modalOverlay) return;
+  modalOverlay.classList.remove('open');
+  unlockScroll();
+  if (history.replaceState) {
+    history.replaceState(null, '', location.pathname + location.search);
+  }
 }
 
 const modalCloseBtn = document.getElementById('modalClose');
 if (modalCloseBtn && modalOverlay) {
-  modalCloseBtn.addEventListener('click', () => { modalOverlay.classList.remove('open'); unlockScroll(); });
+  modalCloseBtn.addEventListener('click', closeDetailModal);
 }
+
+// click the dim backdrop to close
+if (modalOverlay) {
+  modalOverlay.addEventListener('click', (e) => {
+    if (e.target === modalOverlay) closeDetailModal();
+  });
+}
+
+// Esc closes whichever modal is open
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  if (modalOverlay?.classList.contains('open')) { closeDetailModal(); return; }
+  document.querySelectorAll('.modal-overlay.open').forEach(m => {
+    m.classList.remove('open');
+    unlockScroll();
+  });
+});
+
+// ═══════════════════════════════════════════════
+// Deep link  —  open a campsite straight from the URL
+// ═══════════════════════════════════════════════
+let deepLinkDone = false;
+
+function openFromHash() {
+  const raw = location.hash.replace('#', '');
+  if (!raw) return;
+  const id = decodeURIComponent(raw);
+  const camp = camps.find(c => String(c.id) === id);
+  if (!camp) return;
+  const allowed = currentUser || (camp.status || 'approved') === 'approved';
+  if (allowed) openDetailModal(camp);
+}
+
+window.addEventListener('hashchange', openFromHash);
 
 // ═══════════════════════════════════════════════
 // Image Upload / Preview
@@ -751,7 +883,8 @@ function filterCards() {
     const matchesLoc       = !selectedLoc || camp.location === selectedLoc;
     const matchesAmenities = activeAmenities.size === 0 || [...activeAmenities].every(a => !!camp[a]);
 
-    const isVisible = matchesSearch && matchesLoc && matchesAmenities;
+    const isVisible = matchesSearch && matchesLoc && matchesAmenities
+                      && (!showFavsOnly || favourites.has(camp.id));
     card.style.display = isVisible ? 'block' : 'none';
     if (isVisible) visibleCount++;
   });
@@ -868,5 +1001,18 @@ if (editorModalOverlay) {
 // ═══════════════════════════════════════════════
 // Init
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// Saved-only filter toggle
+// ═══════════════════════════════════════════════
+const favFilterBtn = document.getElementById('favFilterBtn');
+if (favFilterBtn) {
+  favFilterBtn.addEventListener('click', () => {
+    showFavsOnly = !showFavsOnly;
+    updateFavButton();
+    filterCards();
+  });
+}
+updateFavButton();
+
 renderLegend();
 renderInventoryIcons();
