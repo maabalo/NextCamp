@@ -93,6 +93,52 @@ function renderLegend() {
 }
 
 // ═══════════════════════════════════════════════
+// Inventory grid icons  (suggest / edit modal)
+// Reuses PIXEL_ICONS so slots match the legend
+// ═══════════════════════════════════════════════
+function renderInventoryIcons() {
+  document.querySelectorAll('[data-icon]').forEach(el => {
+    const key = el.getAttribute('data-icon');
+    if (PIXEL_ICONS[key]) el.innerHTML = PIXEL_ICONS[key];
+  });
+}
+
+// ═══════════════════════════════════════════════
+// Typewriter  (dialogue-box reveal)
+// ═══════════════════════════════════════════════
+let typeTimer = null;
+
+function typeWriter(el, text, speed = 18) {
+  if (!el) return;
+  clearInterval(typeTimer);
+  el.textContent = '';
+  el.classList.remove('done');
+
+  const chars = String(text || '');
+  let i = 0;
+
+  // long text reveals faster so it never drags
+  const step = chars.length > 260 ? 3 : 1;
+
+  typeTimer = setInterval(() => {
+    if (i >= chars.length) {
+      clearInterval(typeTimer);
+      el.classList.add('done');
+      return;
+    }
+    el.textContent += chars.slice(i, i + step);
+    i += step;
+  }, speed);
+
+  // tap the box to skip to the end
+  el.onclick = () => {
+    clearInterval(typeTimer);
+    el.textContent = chars;
+    el.classList.add('done');
+  };
+}
+
+// ═══════════════════════════════════════════════
 // UI TOGGLES (burger, legend, filter)
 // ═══════════════════════════════════════════════
 
@@ -166,7 +212,8 @@ const searchbarStyle       = document.querySelector('.searchbar-style');
 const campingStyleDropdownEl = document.getElementById('campingStyleDropdown');
 if (searchbarStyle && campingStyleDropdownEl) {
   searchbarStyle.addEventListener('click', (e) => {
-    if (!e.target.closest('.dropdown-menu') && !e.target.closest('.dropdown-check-item')) {
+    // Only toggle if clicking the section itself, not inside the menu
+    if (!e.target.closest('.dropdown-menu')) {
       e.stopPropagation();
       toggleDropdown(campingStyleDropdownEl);
     }
@@ -355,7 +402,7 @@ function renderCards() {
         <div class="card-actions">
           <span class="card-location-icon">
             <svg viewBox="0 0 18 18" width="12" height="12" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#EB7D00" d="M8 1a5 5 0 00-5 5c0 3.8 5 9 5 9s5-5.2 5-9a5 5 0 00-5-5zm0 7a2 2 0 110-4 2 2 0 010 4z"/>
+              <path fill="#62d06f" d="M8 1a5 5 0 00-5 5c0 3.8 5 9 5 9s5-5.2 5-9a5 5 0 00-5-5zm0 7a2 2 0 110-4 2 2 0 010 4z"/>
             </svg>
           </span>
           <span class="camp-location">${displayLocation || 'LOCATION UNKNOWN'}</span>
@@ -447,7 +494,7 @@ function openDetailModal(camp) {
   document.getElementById('modalTitle').textContent = camp.name || '';
   const displayLocation = [camp.locDetails, camp.location].filter(Boolean).join(', ');
   document.getElementById('modalLocText').textContent = displayLocation || 'LOCATION UNKNOWN';
-  document.getElementById('modalDesc').textContent = camp.desc || '';
+  typeWriter(document.getElementById('modalDesc'), camp.desc || '');
 
   const campUrlLink    = document.getElementById('modalCampUrlLink');
   const mapLink        = document.getElementById('modalMapLink');
@@ -705,6 +752,13 @@ function filterCards() {
 
   const noResults = document.getElementById('noResults');
   if (noResults) noResults.style.display = visibleCount === 0 ? 'block' : 'none';
+
+  const counter = document.getElementById('resultsCount');
+  if (counter) {
+    counter.textContent = visibleCount === 0
+      ? 'NO RESULTS'
+      : `${visibleCount} CAMPSITE${visibleCount === 1 ? '' : 'S'} FOUND`;
+  }
 }
 
 if (searchInput) searchInput.addEventListener('input', filterCards);
@@ -805,3 +859,4 @@ if (editorModalOverlay) {
 // Init
 // ═══════════════════════════════════════════════
 renderLegend();
+renderInventoryIcons();
