@@ -942,3 +942,57 @@ body.modal-open{ overflow:hidden; }
   .modal-image-wrapper{ height:170px; }
   .inv-grid{ grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); }
 }
+
+/* ═══════════════════════════════════════════
+   FAVOURITES  +  SHARE   (added)
+   ═══════════════════════════════════════════ */
+
+.stage-tools{ display:flex; gap:.7rem; flex-wrap:wrap; }
+
+/* star button on each card */
+.fav-btn{
+  position:absolute; top:10px; left:10px; z-index:6;
+  width:34px; height:34px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.05rem; line-height:1;
+  cursor:pointer; border:none;
+  color:var(--parch-dim);
+  background:var(--ink);
+  box-shadow:0 0 0 3px var(--panel-lite), 4px 4px 0 0 rgba(0,0,0,.5);
+  transition:transform .07s steps(2), color .07s steps(2);
+}
+.fav-btn:hover{
+  color:var(--gold);
+  box-shadow:0 0 0 3px var(--gold), 4px 4px 0 0 rgba(0,0,0,.5);
+}
+.fav-btn:active{ transform:translate(3px,3px); }
+
+.fav-btn.on{
+  color:var(--gold);
+  background:var(--leaf-dark);
+  box-shadow:0 0 0 3px var(--gold), 4px 4px 0 0 rgba(0,0,0,.5),
+             0 0 12px 0 rgba(255,201,74,.5);
+  animation:favpop .18s steps(3);
+}
+@keyframes favpop{
+  0%  { transform:scale(1);   }
+  50% { transform:scale(1.3); }
+  100%{ transform:scale(1);   }
+}
+
+/* share button — matches the map/website link buttons */
+.share-btn{
+  font-family:var(--f-title);
+  font-size:.45rem;
+  cursor:pointer;
+  border:none;
+  color:var(--ink);
+  background:var(--gold);
+}
+.share-btn:hover{ background:#ffd76e; }
+.share-btn:active{ transform:translate(4px,4px); }
+
+@media (max-width:760px){
+  .stage-tools{ width:100%; }
+  .stage-tools .btn{ flex:1; justify-content:center; }
+}
