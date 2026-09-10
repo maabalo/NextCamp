@@ -270,7 +270,13 @@ function buildProvinceList() {
   if (!container) return;
   container.innerHTML = '';
 
-  const locations = [...new Set(camps.map(c => c.location).filter(Boolean))].sort();
+  // Match renderCards visibility: admins see everything,
+  // visitors only see approved entries.
+  const visible = camps.filter(c =>
+    currentUser || (c.status || 'approved') === 'approved'
+  );
+
+  const locations = [...new Set(visible.map(c => c.location).filter(Boolean))].sort();
   const all = ['ALL PROVINCES', ...locations];
 
   all.forEach(loc => {
@@ -278,8 +284,8 @@ function buildProvinceList() {
     item.className = 'province-item' + (loc === currentLocationFilter ? ' selected' : '');
 
     const count = loc === 'ALL PROVINCES'
-      ? camps.length
-      : camps.filter(c => c.location === loc).length;
+      ? visible.length
+      : visible.filter(c => c.location === loc).length;
 
     item.innerHTML = `
       <input type="checkbox" ${loc === currentLocationFilter ? 'checked' : ''}>
@@ -771,7 +777,11 @@ function populateLocationDropdown() {
   if (!dropdownMenu) return;
   dropdownMenu.innerHTML = '';
 
-  const dynamicCities = camps.map(c => c.location?.toUpperCase()).filter(Boolean);
+  const visible = camps.filter(c =>
+    currentUser || (c.status || 'approved') === 'approved'
+  );
+
+  const dynamicCities = visible.map(c => c.location?.toUpperCase()).filter(Boolean);
   const uniqueCities  = ['ALL PROVINCES', ...new Set([...PH_CITIES, ...dynamicCities])];
   if (!uniqueCities.includes(currentLocationFilter)) currentLocationFilter = 'ALL PROVINCES';
 
